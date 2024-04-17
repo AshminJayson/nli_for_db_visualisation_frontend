@@ -85,6 +85,9 @@ export default function Home() {
             // console.log(response);
             const data = await response.json();
             setQueryResult(data);
+            toast.info(
+                "Update the query to with additional information for more precision"
+            );
             console.log(data);
         } catch (err) {
             console.log(err);
@@ -132,10 +135,14 @@ export default function Home() {
 
     const fetchVisualization = async () => {
         if (db == "postgres") {
-            fetchVisualizationPostgres();
+            await fetchVisualizationPostgres();
         } else {
-            fetchVisualizationMongo();
+            await fetchVisualizationMongo();
         }
+
+        toast.info(
+            "Update the type of graph input with specifics for more detailed graphs"
+        );
     };
 
     const fetchVisualizationMongo = async () => {
