@@ -1,5 +1,7 @@
 "use client";
 
+import { Toaster, toast } from "sonner";
+
 import { Button } from "@/components/ui/button";
 import {
     Card,
@@ -92,6 +94,9 @@ export default function Home() {
             const response = await fetch(route);
             const data = await response.json();
             setQueryResult(data);
+            toast.info(
+                "Update the query to with additional information for more precision"
+            );
             console.log(data);
         } catch (err) {
             console.log(err);
@@ -190,13 +195,17 @@ export default function Home() {
                                 <TableCaption>Results</TableCaption>
                                 <TableHeader>
                                     <TableRow>
-                                        {queryResult["col_names"].map(
-                                            (value: string, key: number) => (
-                                                <TableHead key={key}>
-                                                    {value}
-                                                </TableHead>
-                                            )
-                                        )}
+                                        {queryResult["col_names"] &&
+                                            queryResult["col_names"].map(
+                                                (
+                                                    value: string,
+                                                    key: number
+                                                ) => (
+                                                    <TableHead key={key}>
+                                                        {value}
+                                                    </TableHead>
+                                                )
+                                            )}
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -327,6 +336,7 @@ export default function Home() {
                     <img src={visualizationImageURL}></img>
                 </div>
             </div>
+            <Toaster richColors position="bottom-center" />
         </main>
     );
 }
