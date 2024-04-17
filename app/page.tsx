@@ -24,7 +24,7 @@ import {
     Table,
 } from "@/components/ui/table";
 import { Loader2 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const required = ["requirement", "parsed_result", "query"];
 
@@ -33,6 +33,7 @@ export default function Home() {
     const [processingVisualization, setProcessingVisualization] =
         useState(false);
     const [fetchingSchema, setFetchingSchema] = useState(false);
+    const [dbSchema, setDbSchema] = useState<any>();
     const [queryResult, setQueryResult] = useState<any>();
     const [db, setDB] = useState("postgres");
     const [visualizationImageURL, setVisualizationImageURL] =
@@ -43,9 +44,25 @@ export default function Home() {
     const graphDataInputRef = useRef<HTMLInputElement>(null);
     const graphRepresentationInputRef = useRef<HTMLInputElement>(null);
 
-    const fetchDBSchema = async () => {
+    const fetchPostgresDBSchema = async () => {
         setFetchingSchema(true);
-        await new Promise((resolve) => setTimeout(resolve, 2000));
+        const res = await fetch(
+            process.env.NEXT_PUBLIC_BACKEND_URL + "/db_schema"
+        );
+
+        const data = await res.json();
+        setDbSchema(data["data"]);
+        setFetchingSchema(false);
+    };
+
+    const fetchMongoDBSchema = async () => {
+        setFetchingSchema(true);
+        const res = await fetch(
+            process.env.NEXT_PUBLIC_BACKEND_URL + "/mongo_schema"
+        );
+
+        const data = await res.json();
+        setDbSchema(data["data"]);
         setFetchingSchema(false);
     };
 
@@ -114,6 +131,41 @@ export default function Home() {
     };
 
     const fetchVisualization = async () => {
+        if (db == "postgres") {
+            fetchVisualizationPostgres();
+        } else {
+            fetchVisualizationMongo();
+        }
+    };
+
+    const fetchVisualizationMongo = async () => {
+        setProcessingVisualization(true);
+
+        const data = graphDataInputRef.current?.value;
+        const type = graphTypeInputRef.current?.value;
+        const representation = graphRepresentationInputRef.current?.value;
+
+        if (!data || !type || !representation) {
+            setProcessingVisualization(false);
+            return;
+        }
+
+        const route =
+            process.env.NEXT_PUBLIC_BACKEND_URL +
+            `/mongo_visualization?user_input=${data}&chart_type=${type}&vis_requirement=${representation}`;
+
+        try {
+            const response = await fetch(route);
+            const imageBlob = await response.blob();
+            setVisualizationImageURL(URL.createObjectURL(imageBlob));
+        } catch (err) {
+            console.log(err);
+        }
+
+        setProcessingVisualization(false);
+    };
+
+    const fetchVisualizationPostgres = async () => {
         setProcessingVisualization(true);
 
         const data = graphDataInputRef.current?.value;
@@ -142,9 +194,18 @@ export default function Home() {
 
     const changeSelectedDB = async (checked: boolean) => {
         setQueryResult(null);
-        if (checked) setDB("mongo");
-        else setDB("postgres");
+        if (checked) {
+            setDB("mongo");
+            fetchMongoDBSchema();
+        } else {
+            setDB("postgres");
+            fetchPostgresDBSchema();
+        }
     };
+
+    useEffect(() => {
+        fetchPostgresDBSchema();
+    }, []);
 
     return (
         <main className="flex min-h-screen gap-10 p-32 justify-between">
@@ -157,6 +218,10 @@ export default function Home() {
                         onCheckedChange={changeSelectedDB}
                     />
                     <Label htmlFor="airplane-mode">Mongo DB</Label>
+                </div>
+                <div className="flex flex-col">
+                    <h1 className="font-bold">Database Schema</h1>
+                    <ResDesp data={dbSchema} />
                 </div>
                 <div className="flex gap-4">
                     <Input
@@ -340,3 +405,26 @@ export default function Home() {
         </main>
     );
 }
+
+const ResDesp = ({ data }: { data: object }) => {
+    if (!data || Object.keys(data).length === 0) {
+        return <div>No data available</div>;
+    }
+
+    const entries = Object.entries(data);
+
+    return (
+        <div>
+            {entries.map(([key, value]) => (
+                <div key={key}>
+                    <strong>{key}: </strong>
+                    {typeof value === "object" ? (
+                        <ResDesp data={value} />
+                    ) : (
+                        <span>{value}</span>
+                    )}
+                </div>
+            ))}
+        </div>
+    );
+};
